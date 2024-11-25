@@ -1,0 +1,4 @@
+librosa==0.10.2.post1
+audiomentations==0.37.0
+torch==2.5.1
+tqdm==4.67.1
