@@ -1,5 +1,6 @@
 import os
 import sys
+import pickle
 
 current_file_path = os.path.abspath(__file__)
 parent_dir_path = os.path.dirname(os.path.dirname(current_file_path))
@@ -18,11 +19,15 @@ SEED = 42
 class DynamicAudioDataset(Dataset):
     """Create Dynamic Dataset"""
 
-    def __init__(self, data_path, noise_path, ir_path):
+    def __init__(self, data_path, noise_path, ir_path, pickle_split=None):
         self.data_path = data_path
         self.noise_path = noise_path
         self.ir_path = ir_path
         self.data = crawl_directory(data_path)
+        if pickle_split:
+            with open(pickle_split, "rb") as f:
+                split_wavs = pickle.load(f)
+            self.data = split_wavs
         self.rng = default_rng(SEED)
         self.time_indices_dict = {}
         self.get_energy_index()

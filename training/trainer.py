@@ -131,52 +131,43 @@ if __name__ == '__main__':
     print(f'{10*"*"} Training configuration {10*"*"}\n')
     print(f'Config:\n{config}\n')
 
-    epochs = config['epochs']
-    batch_size = config['batch size']
-    patience = config['patience']
+    batch_size = config['batch_size']
     lr = config['lr'] * batch_size / 640
     impulse_train = os.path.join(project_path, config['impulse_responses_train'])
     impulse_val = os.path.join(project_path, config['impulse_responses_val'])
-    train_sets = [os.path.join(project_path, train) for train in config['train_set']]
-    val_sets = [os.path.join(project_path, val) for val in config['val_set']]
+    data_path = config["data_path"]
     background_train = os.path.join(project_path, config['background_noise_train'])
     background_val = os.path.join(project_path, config['background_noise_val'])
-    model_name = config['model name']
     optimizer = config['optimizer']
-    output_path = os.path.join(project_path, config['output_path'])
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-    try:
-        model = config['model']
-    except Exception as e:
-        model = 'Fingerprinter'
 
     loss_fn = NTxent_Loss_2(n_org=batch_size // 2, n_rep=batch_size // 2, device=device).to(device)
 
     print(f'Preparing training set...')
-    
-    train_set = torch.utils.data.ConcatDataset([
-        DynamicAudioDataset(data_path=d_path, noise_path=background_train, ir_path=impulse_train)
-        for d_path in train_sets
-    ])
-    
+
+    train_set = DynamicAudioDataset(data_path=data_path,
+                                    noise_path=background_train,
+                                    ir_path=impulse_train,
+                                    pickle_split=config['train_pickle'])
+    val_set = DynamicAudioDataset(data_path=data_path,
+                                  noise_path=background_train,
+                                  ir_path=impulse_train,
+                                  pickle_split=config['val_pickle'])
+
     print(f'Train set size: {len(train_set)}')
     print(f'Preparing val set...')
-    
-    val_set = torch.utils.data.ConcatDataset(
-        [DynamicAudioDataset(data_path=v_path, noise_path=background_val, ir_path=impulse_val) for v_path in val_sets])
+
     print(f'Validation set size: {len(val_set)}')
 
     print(f'\n{10*"*"} Training starts {10*"*"}\n')
 
     training_loop(train_dset=train_set,
                   val_dset=val_set,
-                  epochs=epochs,
+                  epochs=config['epochs'],
                   batch_size=batch_size,
                   lr=lr,
-                  patience=patience,
+                  patience=config['patience'],
                   loss_fn=loss_fn,
-                  model_name=model_name,
-                  output_path=output_path,
-                  optim=optimizer,
-                  model=model)
+                  model_name=config['model_name'],
+                  output_path=config['output_path'],
+                  optim=optimizer)
