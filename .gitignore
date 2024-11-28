@@ -162,3 +162,10 @@ cython_debug/
 #.idea/
 config/*.json
 *.pt
+logs/*
+*.wav
+*.csv
+*.npy
+logs/*
+*.index
+*.json
