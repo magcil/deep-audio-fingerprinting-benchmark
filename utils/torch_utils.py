@@ -142,13 +142,16 @@ class BatchAugmentationChain(nn.Module):
                                sample_rate=self.sr,
                                output_type="tensor"),
             ApplyImpulseResponse(ir_paths=self.ir_path, p=1., sample_rate=self.sr, output_type="tensor")
-        ], output_type="tensor")
+        ],
+                                     output_type="tensor")
 
         cut_freq_prob = self.rng.random()
         if cut_freq_prob >= 0.60:
             freq_cuts = Compose([
-                LowPassFilter(min_cutoff_freq=2000, max_cutoff_freq=3000, p=1, sample_rate=self.sr, output_type="tensor"),
-                HighPassFilter(max_cutoff_freq=1000, min_cutoff_freq=500, p=1, sample_rate=self.sr, output_type="tensor")
+                LowPassFilter(
+                    min_cutoff_freq=2000, max_cutoff_freq=3000, p=1, sample_rate=self.sr, output_type="tensor"),
+                HighPassFilter(
+                    max_cutoff_freq=1000, min_cutoff_freq=500, p=1, sample_rate=self.sr, output_type="tensor")
             ],
                                 output_type="tensor")
             augmentation_chain = Compose(augmentation_chain.transforms + freq_cuts.transforms, output_type="tensor")
