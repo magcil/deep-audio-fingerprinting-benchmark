@@ -222,7 +222,7 @@ def optimized_training_loop(
                     X_aug = X['shifted_signal'].to(device)
 
                     # Apply augmentations
-                    X_aug = AugChainVal(X_org)
+                    X_aug = AugChainVal(X_aug)
 
                     # Concat to form Contrastive Batch
                     X = torch.cat((X_org, X_aug), dim=0)
