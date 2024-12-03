@@ -197,11 +197,9 @@ def optimized_training_loop(
 
                 # Inference
                 X = model(X)
-                print(X.shape)
 
                 # Split to calculate loss
                 X_org, X_aug = torch.split(X, N, 0)
-                print(X_org.shape, X_aug.shape)
 
                 loss = loss_fn(X_org, X_aug)
                 train_loss += loss.item()

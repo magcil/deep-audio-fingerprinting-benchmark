@@ -97,7 +97,7 @@ class GPUSupportedDynamicAudioDataset(Dataset):
         if pickle_split:
             with open(pickle_split, "rb") as f:
                 split_wavs = pickle.load(f)
-            self.data = split_wavs
+            self.data = [os.path.join(self.data_path, os.path.join(*f.split(os.sep)[-2:])) for f in split_wavs]
         self.rng = default_rng(SEED)
         self.time_indices_dict = {}
         self.get_energy_index()
@@ -153,7 +153,7 @@ class GPUSupportedDynamicAudioDataset(Dataset):
         if self.rng.random() > 0.7:
             offset = random.choice([self.rng.uniform(-self.max_offset, -0.1),
                                     self.rng.uniform(0.1, self.max_offset)]) if time_index else self.rng.uniform(
-                                        0.1, self.rng.max_offset)
+                                        0.1, self.max_offset)
         else:
             offset = 0.
 
