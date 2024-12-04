@@ -91,72 +91,55 @@ def time_offset_modulation(signal: np.ndarray, time_index: int, sr: int = 8000, 
     return signal[start:start + sr]
 
 
-def extract_mel_spectrogram(
-    signal: np.ndarray, sr: int = 8000, n_fft: int = 1024, hop_length: int = 256, n_mels: int = 256
-) -> np.ndarray:
+def extract_mel_spectrogram(signal: np.ndarray,
+                            sr: int = 8000,
+                            n_fft: int = 1024,
+                            hop_length: int = 256,
+                            n_mels: int = 256) -> np.ndarray:
 
     S = librosa.feature.melspectrogram(y=signal, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
     # convert to dB for log-power mel-spectrograms
     return librosa.power_to_db(S, ref=np.max)
 
 
-def audio_augmentation_chain(
-    signal: np.ndarray, time_index: int, noise_path: str, ir_path: str, rng: np.random.Generator, sr: int = 8000
-):
-    """Given the original clean audio applies a series of audio-augmentation to signal[time_index*sr: (time_index+1)*sr]
-    
-    Args:
-        signal (np.ndarray): The original clean audio.
-        time_index (int): The start of the segment corresponding to 1 sec of the original signal.
-        noise_path (str): The path containing the wav files corresponding to the noise examples.
-        ir_path (str): The path containing the impulse responses to apply.
-        rng (np.random.Generator): A np.random.Generator object (required to apply time-offset augmentation)
-        sr (int): The sampling rate of the signal.
-    
-    Returns:
-        Tuple[np.ndarray, np.ndarray]: Tuple corresponding to (Spectrogram_original, Spectrogram_augmented).
-    """
+class AudioAugChain():
+    """ TODO """
 
-    snr_prob = rng.random()
-    if snr_prob <= 0.50:
-        snr = rng.uniform(low=0, high=5)
-    elif 0.50 < snr_prob <= 0.80:
-        snr = rng.uniform(low=5, high=10)
-    else:
-        snr = rng.uniform(low=10, high=15)
+    def __init__(self, noise_path: str, ir_path: str, sr: int = 8000, seed: int = 42):
 
-    augmentation_chain = Compose(
-        [
-            AddBackgroundNoise(sounds_path=noise_path, min_snr_in_db=snr, max_snr_in_db=snr, p=0.8),
-            ApplyImpulseResponse(ir_path=ir_path, p=1.),
-        ]
-    )
-    
-    cut_freq_prob = rng.random()
-    if cut_freq_prob >= 0.60:
-        freq_cuts = Compose(
-            [
+        self.rng = np.random.default_rng(seed=seed)
+        self.noise_path = noise_path
+        self.ir_path = ir_path
+        self.sr = sr
+
+    def _construct_aug_chain(self):
+        snr_prob = self.rng.random()
+
+        if snr_prob <= 0.50:
+            snr = self.rng.uniform(low=0, high=5)
+        elif 0.50 < snr_prob <= 0.80:
+            snr = self.rng.uniform(low=5, high=10)
+        else:
+            snr = self.rng.uniform(low=10, high=15)
+
+        self.augmentation_chain = Compose([
+            AddBackgroundNoise(sounds_path=self.noise_path, min_snr_in_db=snr, max_snr_in_db=snr, p=0.8),
+            ApplyImpulseResponse(ir_path=self.ir_path, p=1.),
+        ])
+
+        cut_freq_prob = self.rng.random()
+        if cut_freq_prob >= 0.60:
+            freq_cuts = Compose([
                 LowPassFilter(min_cutoff_freq=2000, max_cutoff_freq=3000, min_rolloff=12, max_rolloff=36, p=1),
                 HighPassFilter(max_cutoff_freq=1000, min_cutoff_freq=500, min_rolloff=12, max_rolloff=36, p=1)
-            ]
-        )
-        augmentation_chain.transforms.append(freq_cuts)
-        
-    # Get the corresponding segment
-    y = signal[time_index * sr:(time_index + 1) * sr]
+            ])
 
-    # Offset probability
-    if rng.random() > 0.70:
-        offset_signal = time_offset_modulation(signal=signal, time_index=time_index)
-        augmented_signal = augmentation_chain(offset_signal, sample_rate=8000)
-    else:
-        augmented_signal = augmentation_chain(y, sample_rate=8000)
+        self.augmentation_chain.transforms.append(freq_cuts)
 
-    # Clean signal & augmented segments
-    S1 = extract_mel_spectrogram(y)
-    S2 = extract_mel_spectrogram(augmented_signal)
+    def __call__(self, x):
+        self._construct_aug_chain()
 
-    return S1, S2
+        return self.augmentation_chain(x, sample_rate=self.sr)
 
 
 def cutout_spec_augment_mask(rng: np.random.Generator = None):
