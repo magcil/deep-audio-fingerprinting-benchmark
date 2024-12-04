@@ -99,7 +99,10 @@ def extract_mel_spectrogram(signal: np.ndarray,
 
     S = librosa.feature.melspectrogram(y=signal, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
     # convert to dB for log-power mel-spectrograms
-    return librosa.power_to_db(S, ref=np.max)
+    # Scale with ref=np.max, handle for batch dimension
+    S /= np.max(S, axis=(-1, -2), keepdims=True)
+    
+    return librosa.power_to_db(S)
 
 
 class AudioAugChain():

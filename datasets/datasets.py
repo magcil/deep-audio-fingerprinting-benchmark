@@ -97,4 +97,4 @@ class GPUSupportedDynamicAudioDataset(Dataset):
         else:
             shifted_signal = signal
 
-        return {"signal": torch.from_numpy(signal), "shifted_signal": torch.from_numpy(self.AugChain(shifted_signal))}
+        return {"signal": signal, "shifted_signal": self.AugChain(shifted_signal)}

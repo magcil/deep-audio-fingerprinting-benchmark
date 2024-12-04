@@ -16,6 +16,8 @@ import numpy as np
 import torch
 
 from callbacks.early_stopping import EarlyStopping
+from callbacks.collate import collate_waveforms_and_extract_spectrograms
+from utils.utils import extract_mel_spectrogram
 from datasets.datasets import GPUSupportedDynamicAudioDataset
 from utils.torch_utils import LogMelExtractor, SpecAugMask
 from loss.ntxent import NTxent_Loss_2
@@ -51,13 +53,24 @@ def optimized_training_loop(
     model = Neural_Fingerprinter().to(device)
 
     loss_fn = loss_fn.to(device)
-    MelExtractor = LogMelExtractor().to(device)
+    MelExtractor = extract_mel_spectrogram
     SpecAug = SpecAugMask(value=-80., H=256, W=32, H_prob=0.5, W_prob=0.1).to(device)
 
     num_workers = 8
 
-    train_dloader = DataLoader(train_dset, batch_size=N, shuffle=True, num_workers=num_workers, drop_last=True)
-    val_dloader = DataLoader(val_dset, batch_size=N, shuffle=False, num_workers=num_workers, drop_last=True)
+    train_dloader = DataLoader(train_dset,
+                               batch_size=N,
+                               shuffle=True,
+                               num_workers=num_workers,
+                               drop_last=True,
+                               collate_fn=collate_waveforms_and_extract_spectrograms)
+    
+    val_dloader = DataLoader(val_dset,
+                             batch_size=N,
+                             shuffle=False,
+                             num_workers=num_workers,
+                             drop_last=True,
+                             collate_fn=collate_waveforms_and_extract_spectrograms)
 
     if optim == "Adam":
         optim = Adam(model.parameters(), lr=lr)
@@ -82,14 +95,7 @@ def optimized_training_loop(
         with tqdm(train_dloader, unit="batch", leave=False, desc="Training set") as tbatch:
             for i, X in enumerate(tbatch, 1):
                 # Forward pass
-                X_org = X['signal'].to(device)
-                X_aug = X['shifted_signal'].to(device)
-
-                # Concat to form Contrastive Batch
-                X = torch.cat((X_org, X_aug), dim=0)
-
-                # Get MelSpecs
-                X = MelExtractor(X)
+                X = X.to(device)
 
                 # Apply SpecAug
                 if random.random() <= 0.33:
@@ -116,17 +122,9 @@ def optimized_training_loop(
         with torch.no_grad():
             with tqdm(val_dloader, unit="batch", leave=False, desc="Validation set") as vbatch:
                 for X in vbatch:
-
-                    # Forward
-                    X_org = X['signal'].to(device)
-                    X_aug = X['shifted_signal'].to(device)
-
-                    # Concat to form Contrastive Batch
-                    X = torch.cat((X_org, X_aug), dim=0)
-
-                    # Get MelSpecs
-                    X = MelExtractor(X)
-
+                    
+                    X = X.to(device)
+                    
                     # Apply SpecAug
                     if random.random() <= 0.33:
                         X = SpecAug(X)
