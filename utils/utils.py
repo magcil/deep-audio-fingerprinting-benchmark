@@ -134,7 +134,7 @@ class AudioAugChain():
                 HighPassFilter(max_cutoff_freq=1000, min_cutoff_freq=500, min_rolloff=12, max_rolloff=36, p=1)
             ])
 
-        self.augmentation_chain.transforms.append(freq_cuts)
+            self.augmentation_chain.transforms.append(freq_cuts)
 
     def __call__(self, x):
         self._construct_aug_chain()
