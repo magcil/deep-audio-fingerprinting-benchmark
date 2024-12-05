@@ -100,7 +100,11 @@ def extract_mel_spectrogram(signal: np.ndarray,
     S = librosa.feature.melspectrogram(y=signal, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
     # convert to dB for log-power mel-spectrograms
     # Scale with ref=np.max, handle for batch dimension
-    S /= np.max(S, axis=(-1, -2), keepdims=True)
+    maxes = np.max(S, axis=(-1, -2), keepdims=True)
+    amin = np.full_like(maxes, fill_value=1e-10)
+    maxes = np.maximum(maxes, amin)
+    
+    S /= maxes
     
     return librosa.power_to_db(S)
 
