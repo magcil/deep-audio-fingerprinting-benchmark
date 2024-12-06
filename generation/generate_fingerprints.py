@@ -17,11 +17,25 @@ import torch
 from utils.utils import crawl_directory, extract_mel_spectrogram
 from models.neural_fingerprinter import Neural_Fingerprinter
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', required=True, help='The configuration json file.')
-    
+
     return parser.parse_args()
+
+
+def batch_waveforms_and_extract_spectrograms(batch_waveforms):
+    # Batch size (B) x Num Samples
+    new_batch = np.vstack(batch_waveforms)
+
+    # Extract mel-spec, B x F x T
+    new_batch = extract_mel_spectrogram(new_batch)
+
+    # Convert to tensor, add pseudo-dimension and return, B x 1 x F x T
+
+    return torch.from_numpy(new_batch).unsqueeze(1)
+
 
 class FileDataset(Dataset):
 
@@ -31,20 +45,19 @@ class FileDataset(Dataset):
         self.dur = self.y.size // self.F
 
         # Extract spectrograms
-        self._get_spectrograms()
+        self._get_audio_fragments()
 
     def __len__(self):
-        return len(self.spectrograms)
+        return len(self.audio_fragments)
 
     def __getitem__(self, idx):
-        return torch.from_numpy(self.spectrograms[idx])
+        return self.audio_fragments[idx]
 
-    def _get_spectrograms(self):
-        self.spectrograms = []
+    def _get_audio_fragments(self):
+
         J = int(np.floor((self.y.size - self.F) / self.H)) + 1
-        for j in range(J):
-            S = extract_mel_spectrogram(signal=self.y[j * self.H:j * self.H + self.F])
-            self.spectrograms.append(S.reshape(1, *S.shape))
+
+        self.audio_fragments = [self.y[j * self.H:j * self.H + self.F] for j in range(J)]
 
 
 if __name__ == '__main__':
@@ -67,7 +80,7 @@ if __name__ == '__main__':
     model = Neural_Fingerprinter().to(device)
     model.load_state_dict(torch.load(pt_file, weights_only=True))
     print(f'Running on {device}')
-    
+
     # Check if dir exists
     if not os.path.isdir(output_dir):
         raise FileNotFoundError(f"dir {output_dir} does not exist, please create it and rerun")
@@ -76,7 +89,7 @@ if __name__ == '__main__':
     for dir in input_dirs:
         all_songs += crawl_directory(dir, extension='wav')
     print(f'All songs: {len(all_songs)}')
-    
+
     # Filter songs based on given list of songs
     if "filter_pickle" in args.keys():
         with open(args['filter_pickle'], "rb") as f:
@@ -100,22 +113,28 @@ if __name__ == '__main__':
                 print(f'Song: {os.path.basename(file)} has duration less than 1 sec. Skipping...')
                 fails += 1
                 continue
-            file_dloader = DataLoader(file_dset, batch_size=batch_size, shuffle=False)
+            file_dloader = DataLoader(file_dset,
+                                      batch_size=batch_size,
+                                      shuffle=False,
+                                      collate_fn=batch_waveforms_and_extract_spectrograms,
+                                      drop_last=False,
+                                      num_workers=args['num_workers'])
             fingerprints = []
 
             for X in file_dloader:
-                X = model(X.to(device))
+                # X is of shape B x 1 x F x T
+
+                X = model(X.to(device))  # Shape: B x D
+
                 fingerprints.append(X.cpu().numpy())
             try:
-                fingerprints = np.vstack(fingerprints)
-                np.save(
-                    file=os.path.join(output_dir,
-                                        os.path.basename(file).removesuffix('.wav') + '.npy'),
-                    arr=fingerprints
-                )
+                fingerprints = np.vstack(fingerprints)  # Shape: Num Fingerprints x D
+                np.save(file=os.path.join(output_dir,
+                                          os.path.basename(file).removesuffix('.wav') + '.npy'),
+                        arr=fingerprints)
             except Exception as e:
-                    print(f'Failed to save {os.path.basename(file)} | Error: {e}')
-                    fails += 1
-                    continue
+                print(f'Failed to save {os.path.basename(file)} | Error: {e}')
+                fails += 1
+                continue
 
     print(f'Totals: {totals}\nFails: {fails}')

@@ -2,12 +2,15 @@ import torch
 import numpy as np
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from utils.utils import cutout_spec_augment_mask
+from utils.utils import cutout_spec_augment_mask, extract_mel_spectrogram
+
 
 class Collate_Fn():
-    def __init__(self, rng: np.random.Generator, p:float = 0.33):
+
+    def __init__(self, rng: np.random.Generator, p: float = 0.33):
         self.rng = rng
         self.prob = p
 
@@ -20,3 +23,16 @@ class Collate_Fn():
         else:
             x_orgs, x_augs = list(zip(*batch))
             return torch.stack(x_orgs), torch.stack(x_augs)
+
+
+def collate_waveforms_and_extract_spectrograms(batch):
+    signals, shifted_signals = [], []
+    for b in batch:
+        signals.append(b['signal'])
+        shifted_signals.append(b['shifted_signal'])
+    # 2B x F x T
+    new_batch = np.concatenate([np.vstack(signals), np.vstack(shifted_signals)], axis=0)
+    # Extract spectrograms
+    new_batch = extract_mel_spectrogram(new_batch)
+    
+    return torch.from_numpy(new_batch).unsqueeze(1)

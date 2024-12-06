@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import argparse
+import random
 
 project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_path)
@@ -14,9 +15,11 @@ from tqdm import tqdm
 import numpy as np
 import torch
 
-from callbacks.collate import Collate_Fn
 from callbacks.early_stopping import EarlyStopping
-from datasets.datasets import DynamicAudioDataset
+from callbacks.collate import collate_waveforms_and_extract_spectrograms
+from utils.utils import extract_mel_spectrogram
+from datasets.datasets import GPUSupportedDynamicAudioDataset
+from utils.torch_utils import LogMelExtractor, SpecAugMask
 from loss.ntxent import NTxent_Loss_2
 from models.neural_fingerprinter import Neural_Fingerprinter
 
@@ -30,7 +33,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def training_loop(
+def optimized_training_loop(
     train_dset,
     val_dset,
     epochs,
@@ -45,24 +48,30 @@ def training_loop(
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Current device: {device}")
-    N = batch_size // 2
+    N = batch_size
 
     model = Neural_Fingerprinter().to(device)
 
     loss_fn = loss_fn.to(device)
+    MelExtractor = extract_mel_spectrogram
+    SpecAug = SpecAugMask(value=-80., H=256, W=32, H_prob=0.5, W_prob=0.1).to(device)
+
     num_workers = 8
+
     train_dloader = DataLoader(train_dset,
                                batch_size=N,
                                shuffle=True,
-                               collate_fn=Collate_Fn(rng=np.random.default_rng(SEED)),
                                num_workers=num_workers,
-                               drop_last=True)
+                               drop_last=True,
+                               collate_fn=collate_waveforms_and_extract_spectrograms)
+    
     val_dloader = DataLoader(val_dset,
                              batch_size=N,
                              shuffle=False,
-                             collate_fn=Collate_Fn(rng=np.random.default_rng(SEED)),
                              num_workers=num_workers,
-                             drop_last=True)
+                             drop_last=True,
+                             collate_fn=collate_waveforms_and_extract_spectrograms)
+
     if optim == "Adam":
         optim = Adam(model.parameters(), lr=lr)
     elif optim == "Lamb":
@@ -84,30 +93,49 @@ def training_loop(
         i = 0
 
         with tqdm(train_dloader, unit="batch", leave=False, desc="Training set") as tbatch:
-            for i, (x_org, x_aug) in enumerate(tbatch, 1):
+            for i, X in enumerate(tbatch, 1):
                 # Forward pass
-                X = torch.cat((x_org, x_aug), dim=0).to(device)
+                X = X.to(device)
+
+                # Apply SpecAug
+                if random.random() <= 0.33:
+                    X = SpecAug(X)
+
+                # Inference
                 X = model(X)
-                x_org, x_aug = torch.split(X, N, 0)
-                loss = loss_fn(x_org, x_aug)
+
+                # Split to calculate loss
+                X_org, X_aug = torch.split(X, N, 0)
+
+                loss = loss_fn(X_org, X_aug)
                 train_loss += loss.item()
 
                 # Backward pass
                 optim.zero_grad()
                 loss.backward()
                 optim.step()
+
             train_loss /= len(train_dloader)
             lr_scheduler.step()
 
         model.eval()
         with torch.no_grad():
             with tqdm(val_dloader, unit="batch", leave=False, desc="Validation set") as vbatch:
-                for x_org, x_aug in vbatch:
-                    # Forward pass
-                    X = torch.cat((x_org, x_aug), dim=0).to(device)
+                for X in vbatch:
+                    
+                    X = X.to(device)
+                    
+                    # Apply SpecAug
+                    if random.random() <= 0.33:
+                        X = SpecAug(X)
+
+                    # Inference
                     X = model(X)
-                    x_org, x_aug = torch.split(X, N, 0)
-                    loss = loss_fn(x_org, x_aug)
+
+                    # Split to calculate loss
+                    X_org, X_aug = torch.split(X, N, 0)
+
+                    loss = loss_fn(X_org, X_aug)
                     val_loss += loss.item()
         val_loss /= len(val_dloader)
 
@@ -141,18 +169,19 @@ if __name__ == '__main__':
     optimizer = config['optimizer']
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    loss_fn = NTxent_Loss_2(n_org=batch_size // 2, n_rep=batch_size // 2, device=device).to(device)
+    loss_fn = NTxent_Loss_2(n_org=batch_size, n_rep=batch_size, device=device).to(device)
 
     print(f'Preparing training set...')
 
-    train_set = DynamicAudioDataset(data_path=data_path,
-                                    noise_path=background_train,
-                                    ir_path=impulse_train,
-                                    pickle_split=config['train_pickle'])
-    val_set = DynamicAudioDataset(data_path=data_path,
-                                  noise_path=background_train,
-                                  ir_path=impulse_train,
-                                  pickle_split=config['val_pickle'])
+    train_set = GPUSupportedDynamicAudioDataset(data_path=data_path,
+                                                noise_path=background_train,
+                                                ir_path=impulse_train,
+                                                pickle_split=config['train_pickle'])
+
+    val_set = GPUSupportedDynamicAudioDataset(data_path=data_path,
+                                              noise_path=background_val,
+                                              ir_path=impulse_val,
+                                              pickle_split=config['val_pickle'])
 
     print(f'Train set size: {len(train_set)}')
     print(f'Preparing val set...')
@@ -161,13 +190,13 @@ if __name__ == '__main__':
 
     print(f'\n{10*"*"} Training starts {10*"*"}\n')
 
-    training_loop(train_dset=train_set,
-                  val_dset=val_set,
-                  epochs=config['epochs'],
-                  batch_size=batch_size,
-                  lr=lr,
-                  patience=config['patience'],
-                  loss_fn=loss_fn,
-                  model_name=config['model_name'],
-                  output_path=config['output_path'],
-                  optim=optimizer)
+    optimized_training_loop(train_dset=train_set,
+                            val_dset=val_set,
+                            epochs=config['epochs'],
+                            batch_size=batch_size,
+                            lr=lr,
+                            patience=config['patience'],
+                            loss_fn=loss_fn,
+                            model_name=config['model_name'],
+                            output_path=config['output_path'],
+                            optim=optimizer)
