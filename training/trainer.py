@@ -52,6 +52,9 @@ def optimized_training_loop(train_dset,
 
     model = get_model(model_str=model_str).to(device=device)
 
+    # Log model info / sanity check
+    logging.info(f"{model}")
+
     loss_fn = loss_fn.to(device)
     MelExtractor = extract_mel_spectrogram
     SpecAug = SpecAugMask(value=-80., H=256, W=32, H_prob=0.5, W_prob=0.1).to(device)
@@ -158,7 +161,7 @@ if __name__ == '__main__':
 
     # Initialize logger
     logging.basicConfig(filename=os.path.join(project_path, 'logs',
-                                              config['model_name'] + f'_{datetime.now().date()}.log'),
+                                              f"TRAINING_" + config['model_name'] + f'_{datetime.now().date()}.log'),
                         encoding='utf-8',
                         level=logging.INFO,
                         force=True,
@@ -211,4 +214,5 @@ if __name__ == '__main__':
                             loss_fn=loss_fn,
                             model_name=config['model_name'],
                             output_path=config['output_path'],
-                            optim=optimizer)
+                            optim=optimizer,
+                            model_str=model_str)
