@@ -117,7 +117,8 @@ if __name__ == '__main__':
                                       batch_size=batch_size,
                                       shuffle=False,
                                       collate_fn=batch_waveforms_and_extract_spectrograms,
-                                      drop_last=False)
+                                      drop_last=False,
+                                      num_workers=args['num_workers'])
             fingerprints = []
 
             for X in file_dloader:
