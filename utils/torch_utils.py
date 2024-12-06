@@ -8,7 +8,8 @@ import torch
 import numpy as np
 import torchlibrosa as tl
 from torch_audiomentations import Compose, AddBackgroundNoise, ApplyImpulseResponse, HighPassFilter, LowPassFilter
-
+from models.attention import AttentionCNN
+from models.neural_fingerprinter import Neural_Fingerprinter
 
 class SpecAugMask(nn.Module):
     """
@@ -158,3 +159,11 @@ class BatchAugmentationChain(nn.Module):
 
         # Apply augmentations
         return torch.squeeze(augmentation_chain(x))
+
+
+def get_model(model_str: str = "fingerprinter"):
+    assert model_str in ["fingerprinter", "audsearch"]
+    if model_str == "fingerprinter":
+        return Neural_Fingerprinter()
+    else:
+        return AttentionCNN()

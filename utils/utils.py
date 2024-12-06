@@ -103,21 +103,22 @@ def extract_mel_spectrogram(signal: np.ndarray,
     maxes = np.max(S, axis=(-1, -2), keepdims=True)
     amin = np.full_like(maxes, fill_value=1e-10)
     maxes = np.maximum(maxes, amin)
-    
+
     S /= maxes
-    
+
     return librosa.power_to_db(S)
 
 
 class AudioAugChain():
     """ TODO """
 
-    def __init__(self, noise_path: str, ir_path: str, sr: int = 8000, seed: int = 42):
+    def __init__(self, noise_path: str, ir_path: str, sr: int = 8000, seed: int = 42, freq_cut_bool=True):
 
         self.rng = np.random.default_rng(seed=seed)
         self.noise_path = noise_path
         self.ir_path = ir_path
         self.sr = sr
+        self.freq_cut_bool = freq_cut_bool
 
     def _construct_aug_chain(self):
         snr_prob = self.rng.random()
@@ -135,7 +136,7 @@ class AudioAugChain():
         ])
 
         cut_freq_prob = self.rng.random()
-        if cut_freq_prob >= 0.60:
+        if self.freq_cut_bool and cut_freq_prob >= 0.60:
             freq_cuts = Compose([
                 LowPassFilter(min_cutoff_freq=2000, max_cutoff_freq=3000, min_rolloff=12, max_rolloff=36, p=1),
                 HighPassFilter(max_cutoff_freq=1000, min_cutoff_freq=500, min_rolloff=12, max_rolloff=36, p=1)
