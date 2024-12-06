@@ -16,7 +16,7 @@ import torch
 
 from utils.utils import crawl_directory, extract_mel_spectrogram
 from models.neural_fingerprinter import Neural_Fingerprinter
-
+from utils.torch_utils import get_model
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -68,6 +68,12 @@ if __name__ == '__main__':
     with open(config_file, "r") as f:
         args = json.load(f)
         print(f'Config:\n{args}\n')
+    
+    model_str = args.get("model_str", "fingerprinter")
+    # Load Model
+    model = get_model(model_str)
+    # Print Model / sanity check
+    print(model)
 
     SR = args["SR"]
     HOP_SIZE = args["HOP SIZE"]
@@ -77,7 +83,7 @@ if __name__ == '__main__':
     pt_file = args["weights"]
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = Neural_Fingerprinter().to(device)
+    model = model.to(device)
     model.load_state_dict(torch.load(pt_file, weights_only=True))
     print(f'Running on {device}')
 
