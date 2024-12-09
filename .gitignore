@@ -169,3 +169,4 @@ logs/*.log
 *.index
 *.json
 *.pkl
+config/*.yaml
