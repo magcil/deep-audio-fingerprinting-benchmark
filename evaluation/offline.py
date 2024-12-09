@@ -79,7 +79,8 @@ if __name__ == '__main__':
         b_noise = AddBackgroundNoise(sounds_path=background_noises, min_snr_in_db=snr, max_snr_in_db=snr, p=1.)
 
         # Model rows
-        model_rows = {model_num: [query_length] for model_num in models.keys()}
+        if (iter % len(snrs)) == 1:
+            model_rows = {model_num: [query_length] for model_num in models.keys()}
 
         # Iterate over all models
         for model_num, model_info in models.items():
@@ -161,7 +162,7 @@ if __name__ == '__main__':
             # Write row
             model_rows[model_num].append(top_1)
 
-        if len(snrs) % iter:
+        if (iter % len(snrs)) == 0:
             for j, (k, v) in enumerate(model_rows.items(), 1):
                 model_name = models[k]['architecture'] + " (filters)" if models[k][
                     'filters'] else models[k]['architecture'] + " (no filters)"
