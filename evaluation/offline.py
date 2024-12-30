@@ -32,47 +32,7 @@ def parse_args():
     return parser.parse_args()
 
 
-if __name__ == '__main__':
-
-    args = parse_args()
-    config_file = os.path.join(project_path, args.config)
-    with open(config_file, 'r') as f:
-        args = yaml.safe_load(f)
-
-    # Initialize logger
-    date = datetime.datetime.now().date()
-    logging.basicConfig(filename=os.path.join(project_path, 'logs',
-                                              args['experiment_name'] + f'_offline_test_{date}.log'),
-                        encoding='utf-8',
-                        level=logging.INFO,
-                        force=True,
-                        filemode='w',
-                        format='%(asctime)s %(message)s')
-
-    logging.info(f"{5*'*'}Config{5*'*'}:\n")
-    for k, v in args.items():
-        logging.info(f'{k}: {v}')
-
-    # Set device
-    device = args.get("device", "cpu")
-    logging.info(f'Running on {device}')
-
-    # Initialize Result Table
-    result_table = PrettyTable()
-    result_table.field_names = ['Architecture', 'Query length [s] / SNR [dB]', *args['snrs']]
-
-    # Get Query / SNRs / Models
-    query_lengths = args['query_lengths']
-    snrs = args['snrs']
-    models = args['models']
-
-    # Get songs for test / background noises
-    test_songs = crawl_directory(os.path.join(project_path, args['test_songs']), extension='wav')
-    background_noises = os.path.join(project_path, args['background_noises'])
-
-    # Set sampling rate / hop length
-    F, H = args['sr'], args['hop_size']
-
+def offline_test(query_lengths, snrs, background_noises, models, F, H):
     # Iterate over all combinations (Query, SNR)
     for iter, (query_length, snr) in enumerate(product(query_lengths, snrs), start=1):
         # Set Noise augmentation
@@ -173,3 +133,65 @@ if __name__ == '__main__':
                     result_table.add_row([model_name, *v])
 
     logging.info(f"Aggregated Results\n\n{result_table}")
+
+    return result_table
+
+
+if __name__ == '__main__':
+
+    args = parse_args()
+    config_file = os.path.join(project_path, args.config)
+    with open(config_file, 'r') as f:
+        args = yaml.safe_load(f)
+
+    # Initialize logger
+    date = datetime.datetime.now().date()
+    logging.basicConfig(filename=os.path.join(project_path, 'logs',
+                                              args['experiment_name'] + f'_offline_test_{date}.log'),
+                        encoding='utf-8',
+                        level=logging.INFO,
+                        force=True,
+                        filemode='w',
+                        format='%(asctime)s %(message)s')
+
+    logging.info(f"{5*'*'}Config{5*'*'}:\n")
+    for k, v in args.items():
+        logging.info(f'{k}: {v}')
+
+    # Set device
+    device = args.get("device", "cpu")
+    logging.info(f'Running on {device}')
+
+    # Initialize Result Table
+    result_table = PrettyTable()
+    result_table.field_names = ['Architecture', 'Query length [s] / SNR [dB]', *args['snrs']]
+
+    # Get Query / SNRs / Models
+    query_lengths = args['query_lengths']
+    snrs = args['snrs']
+    models = args['models']
+
+    # Get songs for test / background noises
+    test_songs = crawl_directory(os.path.join(project_path, args['test_songs']), extension='wav')
+    background_noises = os.path.join(project_path, args['background_noises'])
+
+    # Set sampling rate / hop length
+    F, H = args['sr'], args['hop_size']
+
+    N_trials = args['n_trials']
+
+    tables = []
+
+    for i in range(N_trials):
+        table = offline_test(query_lengths=query_lengths,
+                             snrs=snrs,
+                             background_noises=background_noises,
+                             models=models,
+                             F=F,
+                             H=H)
+        tables.append(table)
+        
+    
+    # Log all tables
+    for table, i in enumerate(tables, 1):
+        logging.info(f"\nRun: {i}\n\n{table}")
