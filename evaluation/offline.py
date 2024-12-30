@@ -32,7 +32,12 @@ def parse_args():
     return parser.parse_args()
 
 
-def offline_test(query_lengths, snrs, background_noises, models, F, H):
+def offline_test(query_lengths, snrs, background_noises, models, test_songs, F, H, device):
+
+    # Initialize Result Table
+    result_table = PrettyTable()
+    result_table.field_names = ['Architecture', 'Query length [s] / SNR [dB]', *args['snrs']]
+
     # Iterate over all combinations (Query, SNR)
     for iter, (query_length, snr) in enumerate(product(query_lengths, snrs), start=1):
         # Set Noise augmentation
@@ -162,10 +167,6 @@ if __name__ == '__main__':
     device = args.get("device", "cpu")
     logging.info(f'Running on {device}')
 
-    # Initialize Result Table
-    result_table = PrettyTable()
-    result_table.field_names = ['Architecture', 'Query length [s] / SNR [dB]', *args['snrs']]
-
     # Get Query / SNRs / Models
     query_lengths = args['query_lengths']
     snrs = args['snrs']
@@ -187,11 +188,33 @@ if __name__ == '__main__':
                              snrs=snrs,
                              background_noises=background_noises,
                              models=models,
+                             test_songs=test_songs,
                              F=F,
-                             H=H)
+                             H=H,
+                             device=device)
         tables.append(table)
         
-    
-    # Log all tables
-    for table, i in enumerate(tables, 1):
-        logging.info(f"\nRun: {i}\n\n{table}")
+    # Extract numerical data from the last three columns
+    data = []
+    for table in tables:
+        rows = [[float(value) for value in row[2:]] for row in table.rows]  # Extract last 3 columns as floats
+        data.append(rows)
+
+    # Convert the list of tables into a 3D numpy array for easier processing
+    data_array = np.array(data)  # Shape: (num_tables, num_rows, num_last_columns)
+
+    # Calculate mean and std along the first axis (across tables)
+    mean = np.mean(data_array, axis=0)
+    std = np.std(data_array, axis=0)
+
+    # Create a new prettyTable for the summary
+    summary_table = PrettyTable(tables[0].field_names)
+
+    # Populate the summary table
+    for i, row in enumerate(tables[0].rows):  # Use the first table for non-numeric columns
+        unchanged_columns = row[:2]  # Keep the first two columns unchanged
+        numeric_columns = [f"{mean[i, j]:.2f} ({std[i, j]:.2f})" for j in range(mean.shape[1])]  # Format numeric columns
+        summary_table.add_row(unchanged_columns + numeric_columns)  # Combine unchanged and processed columns
+
+    # Display the summary table
+    logging.info(f"Aggregated Table\n\n {summary_table}")    
