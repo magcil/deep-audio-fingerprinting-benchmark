@@ -20,11 +20,11 @@ SEED = 42
 class GPUSupportedDynamicAudioDataset(Dataset):
     """Create Dynamic Dataset"""
 
-    def __init__(self, data_path, noise_path, ir_path, max_offset=0.25, pickle_split=None):
+    def __init__(self, data_path, noise_path, ir_path, max_offset=0.25, pickle_split=None, freq_cut_bool=True):
         self.data_path = data_path
         self.data = crawl_directory(data_path)
         self.max_offset = max_offset
-        self.AugChain = AudioAugChain(noise_path=noise_path, ir_path=ir_path)
+        self.AugChain = AudioAugChain(noise_path=noise_path, ir_path=ir_path, freq_cut_bool=freq_cut_bool)
 
         if pickle_split:
             with open(pickle_split, "rb") as f:

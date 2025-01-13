@@ -98,7 +98,8 @@ class ProjectionHead1(nn.Module):
         x = self.linear2(x)
         if norm:
             x = torch.nn.functional.normalize(x, p=2.0)
-        return torch.squeeze(x)
+
+        return torch.squeeze(x, dim=-1)
 
 
 class AttentionCNN(nn.Module):
