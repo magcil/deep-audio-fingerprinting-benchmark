@@ -163,7 +163,7 @@ cython_debug/
 config/*.json
 *.pt
 logs/*.log
-*.wav
+data/*/*.wav
 *.csv
 *.npy
 *.index
