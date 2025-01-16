@@ -170,3 +170,6 @@ data/*/*.wav
 *.json
 *.pkl
 config/*.yaml
+data/*
+
+!recordings/recording_songs.csv

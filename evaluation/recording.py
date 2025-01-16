@@ -85,7 +85,7 @@ if __name__ == '__main__':
 
     # Get true songs to find intervals
     with open(os.path.join(project_path, args['csv_path']), 'r') as f:
-        true_songs = [os.path.join(project_path, args['true_songs'], x.rstrip()) for x in f.readlines()]
+        true_songs = [os.path.join(args['true_songs'], x.rstrip()) for x in f.readlines()]
 
     songs_intervals = find_songs_intervals(true_songs)
 
