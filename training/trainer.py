@@ -5,6 +5,7 @@ import argparse
 import random
 import logging
 from datetime import datetime
+from typing import Optional
 
 project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_path)
@@ -41,8 +42,8 @@ def optimized_training_loop(train_dset,
                             lr,
                             patience,
                             loss_fn,
-                            model_name=None,
-                            output_path=None,
+                            model_name: str,
+                            output_path: str,
                             optim="Adam",
                             model_str="fingerprinter"):
 
@@ -143,7 +144,7 @@ def optimized_training_loop(train_dset,
 
         ear_stopping(val_loss, model, epoch)
         if ear_stopping.early_stop:
-            logging.infot("Early Stopping.")
+            logging.info("Early Stopping.")
             break
         train_loss, val_loss = 0.0, 0.0
 
