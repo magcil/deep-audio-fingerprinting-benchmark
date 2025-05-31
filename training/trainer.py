@@ -5,7 +5,7 @@ import argparse
 import random
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Callable
 
 project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_path)
@@ -15,11 +15,11 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-import numpy as np
 import torch
+import yaml
 
 from callbacks.early_stopping import EarlyStopping
-from callbacks.collate import collate_waveforms_and_extract_spectrograms
+from callbacks.collate import collate_waveforms_and_extract_spectrograms, collate_waveforms_and_extract_fbanks
 from utils.utils import extract_mel_spectrogram
 from datasets.datasets import GPUSupportedDynamicAudioDataset
 from utils.torch_utils import get_model, SpecAugMask
@@ -45,7 +45,15 @@ def optimized_training_loop(train_dset,
                             model_name: str,
                             output_path: str,
                             optim="Adam",
-                            model_str="fingerprinter"):
+                            model_str="fingerprinter",
+                            collate_fn: Callable = collate_waveforms_and_extract_spectrograms,
+                            spec_aug_params={
+                                "value": -80.,
+                                "H": 256,
+                                "W": 32,
+                                "H_prob": 0.5,
+                                "W_prob": 0.1
+                            }):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logging.info(f"Current device: {device}")
@@ -55,7 +63,7 @@ def optimized_training_loop(train_dset,
 
     loss_fn = loss_fn.to(device)
     MelExtractor = extract_mel_spectrogram
-    SpecAug = SpecAugMask(value=-80., H=256, W=32, H_prob=0.5, W_prob=0.1).to(device)
+    SpecAug = SpecAugMask(**spec_aug_params).to(device)
 
     num_workers = 8
 
@@ -64,14 +72,14 @@ def optimized_training_loop(train_dset,
                                shuffle=True,
                                num_workers=num_workers,
                                drop_last=True,
-                               collate_fn=collate_waveforms_and_extract_spectrograms)
+                               collate_fn=collate_fn)
 
     val_dloader = DataLoader(val_dset,
                              batch_size=N,
                              shuffle=False,
                              num_workers=num_workers,
                              drop_last=True,
-                             collate_fn=collate_waveforms_and_extract_spectrograms)
+                             collate_fn=collate_fn)
 
     if optim == "Adam":
         optim = Adam(model.parameters(), lr=lr)
@@ -155,11 +163,11 @@ if __name__ == '__main__':
     args = parse_args()
     config_path = args.config
     with open(config_path, 'r') as f:
-        config = json.load(f)
+        config = yaml.safe_load(f)
 
     # Initialize logger
     logging.basicConfig(filename=os.path.join(project_path, 'logs',
-                                              config['model_name'] + f'_{datetime.now().date()}.log'),
+                                              config['Model']['model_name'] + f'_{datetime.now().date()}.log'),
                         encoding='utf-8',
                         level=logging.INFO,
                         force=True,
@@ -170,30 +178,38 @@ if __name__ == '__main__':
     logging.info(f'Config:\n{config}\n')
 
     # Training args
-    batch_size = config['batch_size']
-    lr = config['lr'] * batch_size / 640
-    optimizer = config['optimizer']
+    batch_size = config['Hyperparameters']['batch_size']
+    lr = config['Hyperparameters']['lr'] * batch_size / 640
+    optimizer = config['Hyperparameters']['optimizer']
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    freq_cut_bool = config['freq_cut_bool'] if 'freq_cut_bool' in config.keys() else True
+    freq_cut_bool = config['Augmentations']['freq_cut_bool']
+
+    # Collate fn
+    collate_fn = collate_waveforms_and_extract_fbanks if config['Model'][
+        'model_str'] == 'transformer' else collate_waveforms_and_extract_spectrograms
 
     # Get model
-    model_str = config['model_str'] if "model_str" in config.keys() else "fingerprinter"
+    model_str = config['Model']['model_str']
 
     # Initialize loss
     loss_fn = NTxent_Loss_2(n_org=batch_size, n_rep=batch_size, device=device).to(device)
 
     logging.info(f'Preparing training set...')
 
-    train_set = GPUSupportedDynamicAudioDataset(data_path=config["data_path"],
-                                                noise_path=os.path.join(project_path, config['background_noise_train']),
-                                                ir_path=os.path.join(project_path, config['impulse_responses_train']),
-                                                pickle_split=config['train_pickle'],
+    train_set = GPUSupportedDynamicAudioDataset(data_path=config['Data']["data_path"],
+                                                noise_path=os.path.join(project_path,
+                                                                        config['Data']['background_noise_train']),
+                                                ir_path=os.path.join(project_path,
+                                                                     config['Data']['impulse_responses_train']),
+                                                pickle_split=config['Data']['train_pickle'],
                                                 freq_cut_bool=freq_cut_bool)
 
-    val_set = GPUSupportedDynamicAudioDataset(data_path=config["data_path"],
-                                              noise_path=os.path.join(project_path, config['background_noise_val']),
-                                              ir_path=os.path.join(project_path, config['impulse_responses_val']),
-                                              pickle_split=config['val_pickle'],
+    val_set = GPUSupportedDynamicAudioDataset(data_path=config['Data']["data_path"],
+                                              noise_path=os.path.join(project_path,
+                                                                      config['Data']['background_noise_val']),
+                                              ir_path=os.path.join(project_path,
+                                                                   config['Data']['impulse_responses_val']),
+                                              pickle_split=config['Data']['val_pickle'],
                                               freq_cut_bool=freq_cut_bool)
 
     logging.info(f'Train set size: {len(train_set)}')
@@ -205,11 +221,13 @@ if __name__ == '__main__':
 
     optimized_training_loop(train_dset=train_set,
                             val_dset=val_set,
-                            epochs=config['epochs'],
+                            epochs=config['Hyperparameters']['epochs'],
                             batch_size=batch_size,
                             lr=lr,
-                            patience=config['patience'],
+                            patience=config['Hyperparameters']['patience'],
                             loss_fn=loss_fn,
-                            model_name=config['model_name'],
-                            output_path=config['output_path'],
-                            optim=optimizer)
+                            model_name=config['Model']['model_name'],
+                            output_path=config['Model']['output_path'],
+                            optim=optimizer,
+                            collate_fn=collate_fn,
+                            model_str=model_str)

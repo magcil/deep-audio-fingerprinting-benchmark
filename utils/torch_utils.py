@@ -10,6 +10,7 @@ import torchlibrosa as tl
 from torch_audiomentations import Compose, AddBackgroundNoise, ApplyImpulseResponse, HighPassFilter, LowPassFilter
 from models.attention import AttentionCNN
 from models.neural_fingerprinter import Neural_Fingerprinter
+from models.beats.beatswrapper import BEATsWrapper
 
 class SpecAugMask(nn.Module):
     """
@@ -162,8 +163,10 @@ class BatchAugmentationChain(nn.Module):
 
 
 def get_model(model_str: str = "fingerprinter"):
-    assert model_str in ["fingerprinter", "audsearch"]
+    assert model_str in ["fingerprinter", "audsearch", "transformer"]
     if model_str == "fingerprinter":
         return Neural_Fingerprinter()
-    else:
+    elif model_str == "audsearch":
         return AttentionCNN()
+    else:
+        return BEATsWrapper()
