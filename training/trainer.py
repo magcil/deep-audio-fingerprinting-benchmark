@@ -5,7 +5,7 @@ import argparse
 import random
 import logging
 from datetime import datetime
-from typing import Callable
+from typing import Callable, Optional
 
 project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_path)
@@ -53,13 +53,21 @@ def optimized_training_loop(train_dset,
                                 "W": 32,
                                 "H_prob": 0.5,
                                 "W_prob": 0.1
-                            }):
+                            },
+                            backbone_weights: Optional[str] = None,
+                            freeze_encoder: bool = False):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logging.info(f"Current device: {device}")
     N = batch_size
 
     model = get_model(model_str=model_str).to(device=device)
+
+    # Transfer Learning
+    if backbone_weights:
+        model.load_pretrained_encoder(backbone_weights)
+        if freeze_encoder:
+            model.freeze_encoder_weights()
 
     loss_fn = loss_fn.to(device)
     MelExtractor = extract_mel_spectrogram
@@ -190,6 +198,8 @@ if __name__ == '__main__':
 
     # Get model
     model_str = config['Model']['model_str']
+    backbone_weights = config['Model']['backbone_weights'] if 'backbone_weights' in config['Model'].keys() else None
+    freeze_encoder = config['Model']['freeze_encoder'] if 'freeze_encoder' in config['Model'].keys() else False
 
     # Initialize loss
     loss_fn = NTxent_Loss_2(n_org=batch_size, n_rep=batch_size, device=device).to(device)
@@ -230,4 +240,7 @@ if __name__ == '__main__':
                             output_path=config['Model']['output_path'],
                             optim=optimizer,
                             collate_fn=collate_fn,
-                            model_str=model_str)
+                            model_str=model_str,
+                            spec_aug_params=config['Augmentations']['spec_aug_params'],
+                            backbone_weights=backbone_weights,
+                            freeze_encoder=freeze_encoder)
