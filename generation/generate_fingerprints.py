@@ -14,8 +14,8 @@ import librosa
 from tqdm import tqdm
 import torch
 
-from utils.utils import crawl_directory, extract_mel_spectrogram
-from models.neural_fingerprinter import Neural_Fingerprinter
+from utils.utils import crawl_directory, extract_mel_spectrogram, extract_fbanks
+from utils.torch_utils import get_model
 
 
 def parse_args():
@@ -35,6 +35,18 @@ def batch_waveforms_and_extract_spectrograms(batch_waveforms):
     # Convert to tensor, add pseudo-dimension and return, B x 1 x F x T
 
     return torch.from_numpy(new_batch).unsqueeze(1)
+
+
+def batch_waveforms_and_extract_fbanks(batch_waveforms):
+    # Batch size (B) x Num Samples
+    new_batch = np.vstack(batch_waveforms)
+
+    # Extract fbanks, B x T x F
+    new_batch = extract_fbanks(torch.from_numpy(new_batch))
+
+    # Convert to tensor, add pseudo-dimension and return, B x 1 x T x F
+
+    return new_batch.unsqueeze(1)
 
 
 class FileDataset(Dataset):
@@ -77,8 +89,13 @@ if __name__ == '__main__':
     pt_file = args["weights"]
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = Neural_Fingerprinter().to(device)
+    model = get_model(model_str=args['model_str']).to(device)
     model.load_state_dict(torch.load(pt_file, weights_only=True))
+
+    # Specify collate fn
+    collate_fn = batch_waveforms_and_extract_fbanks if args[
+        'model_str'] == 'transformer' else batch_waveforms_and_extract_spectrograms
+
     print(f'Running on {device}')
 
     # Check if dir exists
@@ -116,7 +133,7 @@ if __name__ == '__main__':
             file_dloader = DataLoader(file_dset,
                                       batch_size=batch_size,
                                       shuffle=False,
-                                      collate_fn=batch_waveforms_and_extract_spectrograms,
+                                      collate_fn=collate_fn,    
                                       drop_last=False,
                                       num_workers=args['num_workers'])
             fingerprints = []
