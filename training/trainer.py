@@ -70,7 +70,6 @@ def optimized_training_loop(train_dset,
             model.freeze_encoder_weights()
 
     loss_fn = loss_fn.to(device)
-    MelExtractor = extract_mel_spectrogram
     SpecAug = SpecAugMask(**spec_aug_params).to(device)
 
     num_workers = 8
@@ -193,8 +192,9 @@ if __name__ == '__main__':
     freq_cut_bool = config['Augmentations']['freq_cut_bool']
 
     # Collate fn
+    assert config['Model']['feature'] in ["spectrogram", "fbanks"]
     collate_fn = collate_waveforms_and_extract_fbanks if config['Model'][
-        'model_str'] == 'transformer' else collate_waveforms_and_extract_spectrograms
+        'feature'] == 'fbanks' else collate_waveforms_and_extract_spectrograms
 
     # Get model
     model_str = config['Model']['model_str']

@@ -93,8 +93,9 @@ if __name__ == '__main__':
     model.load_state_dict(torch.load(pt_file, weights_only=True))
 
     # Specify collate fn
+    assert args['feature'] in ["spectrogram", "fbanks"]
     collate_fn = batch_waveforms_and_extract_fbanks if args[
-        'model_str'] == 'transformer' else batch_waveforms_and_extract_spectrograms
+        'feature'] == 'fbanks' else batch_waveforms_and_extract_spectrograms
 
     print(f'Running on {device}')
 
@@ -133,7 +134,7 @@ if __name__ == '__main__':
             file_dloader = DataLoader(file_dset,
                                       batch_size=batch_size,
                                       shuffle=False,
-                                      collate_fn=collate_fn,    
+                                      collate_fn=collate_fn,
                                       drop_last=False,
                                       num_workers=args['num_workers'])
             fingerprints = []

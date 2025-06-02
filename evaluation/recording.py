@@ -10,8 +10,8 @@ from itertools import product
 project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_path)
 
-from utils.torch_utils import get_model
-from utils.utils import extract_mel_spectrogram, get_winner
+from utils.torch_utils import get_model, FeatureExtractor
+from utils.utils import get_winner
 
 import faiss
 import torch
@@ -107,6 +107,9 @@ if __name__ == '__main__':
             model.load_state_dict(
                 torch.load(os.path.join(project_path, model_info['weights']), map_location=device, weights_only=True))
 
+            # Define Feature Extractor based on the architecture
+            FEATURE_EXTRACTOR = FeatureExtractor(feature=model_info['feature'])
+
             # Get Faiss and Json
             index = faiss.read_index(os.path.join(project_path, model_info['index']))
             with open(os.path.join(project_path, model_info['json'])) as f:
@@ -117,8 +120,7 @@ if __name__ == '__main__':
             neighbors = model_info['neighbors']
 
             # Set model name
-            model_name = model_info['architecture'] + " (filters)" if model_info[
-                'filters'] else model_info['architecture'] + " (no filters)"
+            model_name = model_info['model_name']
 
             # Log config
             logging.info(
@@ -147,12 +149,10 @@ if __name__ == '__main__':
                         # Inference
                         tic = time.perf_counter()
                         J = int(np.floor((rec_slice.size - F) / H)) + 1
-                        xq = [
-                            np.expand_dims(extract_mel_spectrogram(rec_slice[j * H:j * H + F]), axis=0)
-                            for j in range(J)
-                        ]
-                        xq = np.stack(xq)
-                        out = model(torch.from_numpy(xq).to(device))
+
+                        xq = FEATURE_EXTRACTOR(np.vstack([rec_slice[j * H:j * H + F] for j in range(J)]))
+
+                        out = model(torch.unsqueeze(xq, dim=1).to(device))
                         inference_time.append(1000 * (time.perf_counter() - tic))
 
                         # Retrieval
@@ -178,12 +178,11 @@ if __name__ == '__main__':
             )
 
             # Write row
-            model_rows[model_num].append(acc)
+            model_rows[model_num].append(str(acc))
 
         if (iter % len(recordings)) == 0:
             for j, (k, v) in enumerate(model_rows.items(), 1):
-                model_name = models[k]['architecture'] + " (filters)" if models[k][
-                    'filters'] else models[k]['architecture'] + " (no filters)"
+                model_name = models[k]['model_name']
 
                 if j == len(model_rows):
                     result_table.add_row([model_name, *v], divider=True)
