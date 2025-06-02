@@ -184,7 +184,6 @@ class FeatureExtractor():
         self.feature_extractor: Callable[[np.ndarray], torch.Tensor] = compose(
             extract_fbanks, torch.from_numpy) if feature == "fbanks" else compose(torch.from_numpy,
                                                                                   extract_mel_spectrogram)
-        pass
 
     def __call__(self, x: np.ndarray) -> torch.Tensor:
         return self.feature_extractor(x)
