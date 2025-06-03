@@ -1,12 +1,10 @@
 import os
 import sys
-import json
-from typing import Optional, Dict
+from typing import Dict
 
 import torch
 import torch.nn as nn
-import librosa
-import numpy as np
+import torch.nn.functional as F
 
 DIR_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -101,6 +99,6 @@ class BEATsWrapper(nn.Module):
         x = x.mean(1)
         # x: B x 768
         if self.div_encoder_layer:
-            return self.projection_head(x)
+            return F.normalize(self.projection_head(x), p=2.)
         else:
-            return x
+            return F.normalize(x, p=2.)
