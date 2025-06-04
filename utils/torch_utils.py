@@ -167,14 +167,14 @@ class BatchAugmentationChain(nn.Module):
         return torch.squeeze(augmentation_chain(x))
 
 
-def get_model(model_str: str = "fingerprinter"):
+def get_model(model_str: str = "fingerprinter", div_encoder_layer: bool = True):
     assert model_str in ["fingerprinter", "audsearch", "transformer"]
     if model_str == "fingerprinter":
         return Neural_Fingerprinter()
     elif model_str == "audsearch":
         return AttentionCNN()
     else:
-        return BEATsWrapper()
+        return BEATsWrapper(div_encoder_layer=div_encoder_layer)
 
 
 class FeatureExtractor():

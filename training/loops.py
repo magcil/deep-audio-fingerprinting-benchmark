@@ -41,13 +41,14 @@ def contrastive_training_loop(train_dset,
                                   "W_prob": 0.1
                               },
                               backbone_weights: Optional[str] = None,
-                              freeze_encoder: bool = False):
+                              freeze_encoder: bool = False,
+                              div_encoder_layer: bool = True):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logging.info(f"Current device: {device}")
     N = batch_size
 
-    model = get_model(model_str=model_str).to(device=device)
+    model = get_model(model_str=model_str, div_encoder_layer=div_encoder_layer).to(device=device)
 
     # Transfer Learning
     if backbone_weights:
@@ -172,13 +173,14 @@ def angular_training_loop(train_dset,
                               "W_prob": 0.1
                           },
                           backbone_weights: Optional[str] = None,
-                          freeze_encoder: bool = False):
+                          freeze_encoder: bool = False,
+                          div_encoder_layer: bool = True):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logging.info(f"Current device: {device}")
     N = batch_size
 
-    model = get_model(model_str=model_str).to(device=device)
+    model = get_model(model_str=model_str, div_encoder_layer=div_encoder_layer).to(device=device)
 
     # Transfer Learning
     if backbone_weights:
@@ -191,7 +193,7 @@ def angular_training_loop(train_dset,
     loss_fn = losses.AngularLoss(alpha=alpha, distance=distance).to(device)
     train_miner = miners.AngularMiner(angle=miner_alpha)
     valid_miner = miners.AngularMiner(angle=0)
-    
+
     SpecAug = SpecAugMask(**spec_aug_params).to(device)
 
     num_workers = 8
@@ -276,7 +278,7 @@ def angular_training_loop(train_dset,
                     miner_triplets = valid_miner(X, pseudo_labels)
 
                     loss = loss_fn(X, pseudo_labels, miner_triplets)
-                    
+
                     val_loss += loss.item()
         val_loss /= len(val_dloader)
 

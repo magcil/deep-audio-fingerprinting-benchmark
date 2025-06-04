@@ -89,7 +89,7 @@ if __name__ == '__main__':
     pt_file = args["weights"]
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = get_model(model_str=args['model_str']).to(device)
+    model = get_model(model_str=args['model_str'], div_encoder_layer=args.get("div_encoder_layer", True)).to(device)
     model.load_state_dict(torch.load(pt_file, weights_only=True))
 
     # Specify collate fn

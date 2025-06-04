@@ -102,7 +102,8 @@ if __name__ == '__main__':
         for model_num, model_info in models.items():
 
             # Initialize model
-            model = get_model(model_str=model_info['architecture']).to(device)
+            model = get_model(model_str=model_info['architecture'],
+                              div_encoder_layer=model_info.get('div_encoder_layer', True)).to(device)
             # Load weights
             model.load_state_dict(
                 torch.load(os.path.join(project_path, model_info['weights']), map_location=device, weights_only=True))

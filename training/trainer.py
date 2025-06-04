@@ -104,7 +104,8 @@ if __name__ == '__main__':
                                   model_str=model_str,
                                   spec_aug_params=config['Augmentations']['spec_aug_params'],
                                   backbone_weights=backbone_weights,
-                                  freeze_encoder=freeze_encoder)
+                                  freeze_encoder=freeze_encoder,
+                                  div_encoder_layer=config['Model'].get('div_encoder_layer', True))
     elif loss_function == "angular":
         logging.info(f'Loss function: {loss_function}')
         angular_training_loop(train_dset=train_set,
@@ -122,4 +123,5 @@ if __name__ == '__main__':
                               backbone_weights=backbone_weights,
                               freeze_encoder=freeze_encoder,
                               alpha=config['Hyperparameters'].get("alpha", 40),
-                              miner_alpha=config['Hyperparameters'].get("miner_alpha", 20))
+                              miner_alpha=config['Hyperparameters'].get("miner_alpha", 20),
+                              div_encoder_layer=config['Model'].get('div_encoder_layer', True))
