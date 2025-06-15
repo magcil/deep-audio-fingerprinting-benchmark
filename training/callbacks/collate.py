@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from utils.utils import cutout_spec_augment_mask, extract_mel_spectrogram
+from utils.utils import cutout_spec_augment_mask, extract_mel_spectrogram, extract_fbanks
 
 
 class Collate_Fn():
@@ -36,3 +36,15 @@ def collate_waveforms_and_extract_spectrograms(batch):
     new_batch = extract_mel_spectrogram(new_batch)
     
     return torch.from_numpy(new_batch).unsqueeze(1)
+
+def collate_waveforms_and_extract_fbanks(batch):
+    signals, shifted_signals = [], []
+    for b in batch:
+        signals.append(b['signal'])
+        shifted_signals.append(b['shifted_signal'])
+    # 2B x F x T
+    new_batch = np.concatenate([np.vstack(signals), np.vstack(shifted_signals)], axis=0)
+    # Extract spectrograms
+    new_batch = extract_fbanks(torch.from_numpy(new_batch))
+    
+    return new_batch.unsqueeze(1)

@@ -1,6 +1,10 @@
+from typing import Optional
+
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
+from pytorch_metric_learning.losses import AngularLoss
+from pytorch_metric_learning.miners import AngularMiner
 
 
 class NTxent_Loss(nn.Module):
@@ -32,7 +36,7 @@ class NTxent_Loss(nn.Module):
 
 class NTxent_Loss_2(nn.Module):
 
-    def __init__(self, n_org: int, n_rep: int, T: float = 0.05, device: str = None):
+    def __init__(self, n_org: int, n_rep: int, T: float = 0.05, device: Optional[str] = None):
         super(NTxent_Loss_2, self).__init__()
         self.T = T
         self.n_org = n_org
@@ -62,7 +66,7 @@ class NTxent_Loss_2(nn.Module):
 
 class Focal_NTxent_Loss(nn.Module):
 
-    def __init__(self, n_org: int, n_rep: int, T: float = 0.05, device: str = None, gamma: float = 1.):
+    def __init__(self, n_org: int, n_rep: int, T: float = 0.05, device: Optional[str] = None, gamma: float = 1.):
         super(Focal_NTxent_Loss, self).__init__()
         self.T = T
         self.n_org = n_org
@@ -91,12 +95,27 @@ class Focal_NTxent_Loss(nn.Module):
         probs_b = F.softmax(torch.concatenate((logits_ba, logits_bb), dim=-1), dim=1)
 
         loss_a = self.nll_loss(
-            ((1 - probs_a)**self.gamma) * self.log_softmax(torch.concatenate((logits_ab, logits_aa), dim=-1)),
-            self.labels
-        )
+            ((1 - probs_a)**self.gamma) * self.log_softmax(torch.concatenate(
+                (logits_ab, logits_aa), dim=-1)), self.labels)
         loss_b = self.nll_loss(
-            ((1 - probs_b)**self.gamma) * self.log_softmax(torch.concatenate((logits_ba, logits_bb), dim=-1)),
-            self.labels
-        )
+            ((1 - probs_b)**self.gamma) * self.log_softmax(torch.concatenate(
+                (logits_ba, logits_bb), dim=-1)), self.labels)
 
         return (loss_a + loss_b) / 2
+
+
+class AngularLossWrapper(nn.Module):
+
+    def __init__(self, n_org: int, n_rep: int, alpha: int = 40, device: Optional[str] = None):
+        super(AngularLossWrapper, self).__init__()
+        self.n_org = n_org
+        self.n_rep = n_rep
+        self.device = device if device else 'cpu'
+        self.alpha = alpha
+
+        self.angular_loss = AngularLoss(alpha=alpha, normalize_embeddings=False)
+        self.labels = torch.cat([torch.arange(n_org), torch.arange(n_rep)]).to(device)
+
+    def forward(self, emb_org: torch.Tensor, emb_aug: torch.Tensor):
+
+        return self.angular_loss(torch.cat([emb_org, emb_aug]), self.labels)

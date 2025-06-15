@@ -1,7 +1,10 @@
 import os
 import sys
+from typing import Callable
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from utils.utils import extract_fbanks, extract_mel_spectrogram
 
 import torch.nn as nn
 import torch
@@ -10,6 +13,9 @@ import torchlibrosa as tl
 from torch_audiomentations import Compose, AddBackgroundNoise, ApplyImpulseResponse, HighPassFilter, LowPassFilter
 from models.attention import AttentionCNN
 from models.neural_fingerprinter import Neural_Fingerprinter
+from models.beats.beatswrapper import BEATsWrapper
+from toolz import compose
+
 
 class SpecAugMask(nn.Module):
     """
@@ -161,9 +167,23 @@ class BatchAugmentationChain(nn.Module):
         return torch.squeeze(augmentation_chain(x))
 
 
-def get_model(model_str: str = "fingerprinter"):
-    assert model_str in ["fingerprinter", "audsearch"]
+def get_model(model_str: str = "fingerprinter", div_encoder_layer: bool = True):
+    assert model_str in ["fingerprinter", "audsearch", "transformer"]
     if model_str == "fingerprinter":
         return Neural_Fingerprinter()
-    else:
+    elif model_str == "audsearch":
         return AttentionCNN()
+    else:
+        return BEATsWrapper(div_encoder_layer=div_encoder_layer)
+
+
+class FeatureExtractor():
+
+    def __init__(self, feature: str):
+        assert feature in ["spectrogram", "fbanks"]
+        self.feature_extractor: Callable[[np.ndarray], torch.Tensor] = compose(
+            extract_fbanks, torch.from_numpy) if feature == "fbanks" else compose(torch.from_numpy,
+                                                                                  extract_mel_spectrogram)
+
+    def __call__(self, x: np.ndarray) -> torch.Tensor:
+        return self.feature_extractor(x)

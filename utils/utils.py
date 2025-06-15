@@ -2,11 +2,13 @@ import os
 import wave
 import random
 from collections import Counter
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 from audiomentations import Compose, AddBackgroundNoise, ApplyImpulseResponse, HighPassFilter, LowPassFilter
 import librosa
+import torch
+import torchaudio.compliance.kaldi as ta_kaldi
 
 
 def add_background_noise(y: np.ndarray, y_noise: np.ndarray, SNR: float) -> np.ndarray:
@@ -32,7 +34,7 @@ def add_background_noise(y: np.ndarray, y_noise: np.ndarray, SNR: float) -> np.n
     return z / z.max()
 
 
-def crawl_directory(directory: str, extension: str = None) -> list:
+def crawl_directory(directory: str, extension: Optional[str] = None) -> list:
     """Crawling data directory
     Args:
         directory (str) : The directory to crawl
@@ -109,6 +111,25 @@ def extract_mel_spectrogram(signal: np.ndarray,
     return librosa.power_to_db(S)
 
 
+def extract_fbanks(source: torch.Tensor,
+                   fbank_mean: float = 15.41663,
+                   fbank_std: float = 6.55582,
+                   sample_rate: int = 8_000) -> torch.Tensor:
+
+    fbanks = []
+    for waveform in source:
+        waveform = waveform.unsqueeze(0) * 2**15
+        fbank = ta_kaldi.fbank(waveform,
+                               num_mel_bins=128,
+                               sample_frequency=sample_rate,
+                               frame_length=25,
+                               frame_shift=10)
+        fbanks.append(fbank)
+    fbank = torch.stack(fbanks, dim=0)
+    fbank = (fbank - fbank_mean) / (2 * fbank_std)
+    return fbank
+
+
 class AudioAugChain():
     """ TODO """
 
@@ -150,7 +171,7 @@ class AudioAugChain():
         return self.augmentation_chain(x, sample_rate=self.sr)
 
 
-def cutout_spec_augment_mask(rng: np.random.Generator = None):
+def cutout_spec_augment_mask(rng: Optional[np.random.Generator] = None):
 
     H, W = 256, 32
     H_max, W_max = H // 2, int(0.9 * W)
