@@ -19,7 +19,7 @@ import numpy as np
 from prettytable import PrettyTable
 import yaml
 
-from utils.torch_utils import get_model
+from utils.torch_utils import get_model, FeatureExtractor
 from utils.utils import crawl_directory, extract_mel_spectrogram, query_sequence_search, search_index
 from utils.metrics import summary_metrics
 
@@ -50,7 +50,12 @@ def offline_test(query_lengths, snrs, background_noises, models, test_songs, F, 
         # Iterate over all models
         for model_num, model_info in models.items():
             # Initialize model
-            model = get_model(model_str=model_info['architecture']).to(device)
+            model = get_model(model_str=model_info['architecture'],
+                              div_encoder_layer=model_info.get('div_encoder_layer', True)).to(device)
+            
+            # Define Feature Extractor based on the architecture
+            FEATURE_EXTRACTOR = FeatureExtractor(feature=model_info['feature'])
+            
             # Load weights
             model.load_state_dict(
                 torch.load(os.path.join(project_path, model_info['weights']), map_location=device, weights_only=True))
@@ -64,8 +69,7 @@ def offline_test(query_lengths, snrs, background_noises, models, test_songs, F, 
             neighbors = model_info['neighbors']
 
             # Set model name
-            model_name = model_info['architecture'] + " (filters)" if model_info[
-                'filters'] else model_info['architecture'] + " (no filters)"
+            model_name = model_info['model_name']
 
             # Log config
             logging.info(
@@ -93,12 +97,10 @@ def offline_test(query_lengths, snrs, background_noises, models, test_songs, F, 
                         tic = time.perf_counter()
                         y_slice = b_noise(y[seg * query_length * F:(seg + 1) * query_length * F], sample_rate=F)
                         J = int(np.floor((y_slice.size - F) / H)) + 1
-                        xq = [
-                            np.expand_dims(extract_mel_spectrogram(signal=y_slice[j * H:j * H + F]), axis=0)
-                            for j in range(J)
-                        ]
-                        xq = np.stack(xq)
-                        out = model(torch.from_numpy(xq).to(device))
+                        
+                        xq = FEATURE_EXTRACTOR(np.vstack([y_slice[j * H:j * H + F] for j in range(J)]))
+                        
+                        out = model(torch.unsqueeze(xq, dim=1).to(device))
                         inference_times.append(1000 * (time.perf_counter() - tic))
 
                         # Retrieval
@@ -129,8 +131,7 @@ def offline_test(query_lengths, snrs, background_noises, models, test_songs, F, 
 
         if (iter % len(snrs)) == 0:
             for j, (k, v) in enumerate(model_rows.items(), 1):
-                model_name = models[k]['architecture'] + " (filters)" if models[k][
-                    'filters'] else models[k]['architecture'] + " (no filters)"
+                model_name = models[k]['model_name']
 
                 if j == len(model_rows):
                     result_table.add_row([model_name, *v], divider=True)
