@@ -20,16 +20,25 @@ SEED = 42
 class GPUSupportedDynamicAudioDataset(Dataset):
     """Create Dynamic Dataset"""
 
-    def __init__(self, data_path, noise_path, ir_path, max_offset=0.25, pickle_split=None, freq_cut_bool=True):
-        self.data_path = data_path
-        self.data = crawl_directory(data_path)
+    def __init__(self, data_paths, noise_path, ir_path, max_offset=0.25, pickle_splits=None, freq_cut_bool=True):
+        if isinstance(data_paths, str):
+            data_paths = [data_paths]
+        if pickle_splits is None:
+            pickle_splits = [None] * len(data_paths)
+            
+        self.data = []
+        for data_path, pickle_split in zip(data_paths, pickle_splits):
+            if pickle_split:
+                with open(pickle_split, "rb") as f:
+                    split_wavs = pickle.load(f)
+                temp_wavs = [os.path.join(data_path, os.path.join(*f.split(os.sep)[-2:])) for f in split_wavs]
+            else:
+                temp_wavs = crawl_directory(data_path, extension=".wav")
+            self.data.extend(temp_wavs)
+        
         self.max_offset = max_offset
         self.AugChain = AudioAugChain(noise_path=noise_path, ir_path=ir_path, freq_cut_bool=freq_cut_bool)
 
-        if pickle_split:
-            with open(pickle_split, "rb") as f:
-                split_wavs = pickle.load(f)
-            self.data = [os.path.join(self.data_path, os.path.join(*f.split(os.sep)[-2:])) for f in split_wavs]
         self.rng = default_rng(SEED)
         self.time_indices_dict = {}
         self.get_energy_index()
@@ -43,7 +52,6 @@ class GPUSupportedDynamicAudioDataset(Dataset):
         to_keep = []
         for wav in self.data:
             indices = []
-            full_wav_path = os.path.abspath(os.path.join(self.data_path, wav))
 
             try:
                 signal, sr = librosa.load(wav, sr=8000)

@@ -66,20 +66,20 @@ if __name__ == '__main__':
 
     logging.info(f'Preparing training set...')
 
-    train_set = GPUSupportedDynamicAudioDataset(data_path=config['Data']["data_path"],
+    train_set = GPUSupportedDynamicAudioDataset(data_paths=config['Data']["train_data_paths"],
                                                 noise_path=os.path.join(project_path,
                                                                         config['Data']['background_noise_train']),
                                                 ir_path=os.path.join(project_path,
                                                                      config['Data']['impulse_responses_train']),
-                                                pickle_split=config['Data']['train_pickle'],
+                                                pickle_splits=config['Data']['train_pickle'],
                                                 freq_cut_bool=freq_cut_bool)
 
-    val_set = GPUSupportedDynamicAudioDataset(data_path=config['Data']["data_path"],
+    val_set = GPUSupportedDynamicAudioDataset(data_paths=config['Data']["val_data_paths"],
                                               noise_path=os.path.join(project_path,
                                                                       config['Data']['background_noise_val']),
                                               ir_path=os.path.join(project_path,
                                                                    config['Data']['impulse_responses_val']),
-                                              pickle_split=config['Data']['val_pickle'],
+                                              pickle_splits=config['Data']['val_pickle'],
                                               freq_cut_bool=freq_cut_bool)
 
     logging.info(f'Train set size: {len(train_set)}')
