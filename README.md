@@ -1,5 +1,3 @@
-
-https://github.com/user-attachments/assets/e07478a6-98f9-4691-85d1-949753a2b71d
 # deep_audio_fingerprinting_benchmark
 Repository for research in deep audio fingerprinting for recognizing songs through the microphone. GitHub repository of the paper titled: 
 
