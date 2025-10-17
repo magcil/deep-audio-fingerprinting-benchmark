@@ -1,7 +1,21 @@
+
+https://github.com/user-attachments/assets/e07478a6-98f9-4691-85d1-949753a2b71d
 # deep_audio_fingerprinting_benchmark
 Repository for research in deep audio fingerprinting for recognizing songs through the microphone. GitHub repository of the paper titled: 
 
 Robustness of Deep Learning - Based Systems for Song Identification through a Real-World Evaluation Protocol.
+
+## Demos
+
+
+https://github.com/user-attachments/assets/a5092b4c-1786-42df-9f6f-1bb16e516a3b
+
+
+
+
+https://github.com/user-attachments/assets/25ded63f-5e91-4230-8779-2917e6e9a9b6
+
+
 
 ## Env Setup
 
@@ -214,6 +228,14 @@ models:
         json: "Abs Path Faiss json"
         nprobes: 5 # Number of probes for searching
         neighbors: 4 # Number of neighbors to retrieve for each query segment
+```
+
+## Citation
+
+You can cite our work as:
+
+```
+Nikou, C., Giannakopoulos, T. (2025). Contrastive and Transfer Learning for Effective Audio Fingerprinting through a Real-World Evaluation Protocol. IJMSTA. 2025 January 01; 7 (1): 68-82. 
 ```
 
 ## References
