@@ -13,7 +13,6 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torch
-from pytorch_metric_learning.miners import AngularMiner
 
 from callbacks.early_stopping import EarlyStopping
 from callbacks.collate import collate_waveforms_and_extract_spectrograms
