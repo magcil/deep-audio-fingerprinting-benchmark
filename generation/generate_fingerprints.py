@@ -87,6 +87,7 @@ if __name__ == '__main__':
     output_dir = os.path.join(project_path, args["output dir"])
     batch_size = args["batch size"]
     pt_file = args["weights"]
+    extension = args.get("extension", ".wav")
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = get_model(model_str=args['model_str'], div_encoder_layer=args.get("div_encoder_layer", True)).to(device)
@@ -105,7 +106,7 @@ if __name__ == '__main__':
 
     all_songs = []
     for dir in input_dirs:
-        all_songs += crawl_directory(dir, extension='wav')
+        all_songs += crawl_directory(dir, extension=extension)
     print(f'All songs: {len(all_songs)}')
 
     # Filter songs based on given list of songs
@@ -116,7 +117,7 @@ if __name__ == '__main__':
         print(f"Songs after filter: {len(all_songs)}")
 
     # Discard already fingerprinted songs
-    to_discard = [os.path.basename(song).removesuffix('.npy') + '.wav' for song in crawl_directory(output_dir)]
+    to_discard = [os.path.basename(song).removesuffix('.npy') + extension for song in crawl_directory(output_dir)]
     all_songs = [song for song in all_songs if os.path.basename(song) not in to_discard]
     print(f'Songs to fingerprint: {len(all_songs)} | Discarded: {len(to_discard)}')
 
@@ -148,7 +149,7 @@ if __name__ == '__main__':
             try:
                 fingerprints = np.vstack(fingerprints)  # Shape: Num Fingerprints x D
                 np.save(file=os.path.join(output_dir,
-                                          os.path.basename(file).removesuffix('.wav') + '.npy'),
+                                          os.path.basename(file).removesuffix(extension) + '.npy'),
                         arr=fingerprints)
             except Exception as e:
                 print(f'Failed to save {os.path.basename(file)} | Error: {e}')
