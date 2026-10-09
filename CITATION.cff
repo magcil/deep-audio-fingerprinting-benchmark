@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Deep audio fingerprinting benchmark"
+authors:
+  - family-names: Nikou
+    given-names: Christos
+    affiliation: 'MagCIL, Institute of Informatics and Telecommunications, NCSR "Demokritos"'
+  - family-names: Giannakopoulos
+    given-names: Theodoros
+    affiliation: 'MagCIL, Institute of Informatics and Telecommunications, NCSR "Demokritos"'
+repository-code: "https://github.com/magcil/deep-audio-fingerprinting-benchmark"
+url: "https://magcil.github.io"
+preferred-citation:
+  type: article
+  title: "Contrastive and Transfer Learning for Effective Audio Fingerprinting through a Real-World Evaluation Protocol"
+  authors:
+    - family-names: Nikou
+      given-names: Christos
+    - family-names: Giannakopoulos
+      given-names: Theodoros
+  journal: "International Journal of Multimedia and its Applications (IJMSTA)"
+  volume: 7
+  issue: 1
+  start: 68
+  end: 82
+  year: 2025

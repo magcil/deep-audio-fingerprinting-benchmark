@@ -1,4 +1,6 @@
 # deep_audio_fingerprinting_benchmark
+> Developed at [**MagCIL**](https://magcil.github.io), the Multimodal Analysis Group of the Institute of Informatics and Telecommunications, [NCSR "Demokritos"](https://www.demokritos.gr/), Athens, Greece.
+
 Repository for research in deep audio fingerprinting for recognizing songs through the microphone. GitHub repository of the paper titled: 
 
 Robustness of Deep Learning - Based Systems for Song Identification through a Real-World Evaluation Protocol.
@@ -243,3 +245,26 @@ Nikou, C., Giannakopoulos, T. (2025). Contrastive and Transfer Learning for Effe
 [2] <a href="https://arxiv.org/pdf/1711.10958">Chang, Sungkyun, et al. "Neural audio fingerprint for high-specific audio retrieval based on contrastive learning." ICASSP 2021-2021 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2021.</a>
 
 [3] <a href="https://arxiv.org/pdf/2210.08624"> Singh, Anup, Kris Demuynck, and Vipul Arora. "Attention-based audio embeddings for query-by-example." arXiv preprint arXiv:2210.08624 (2022).</a>
+
+## About MagCIL
+
+This repository comes from [MagCIL](https://magcil.github.io), the Multimodal Analysis Group of the
+Institute of Informatics and Telecommunications at the National Centre for Scientific Research
+"Demokritos" in Athens, Greece. We work on multimodal deep learning for audio, speech, music and
+video, from fundamental research to deployed systems.
+
+- Group website: <https://magcil.github.io>
+- Publications: <https://magcil.github.io/pub.html>
+- All our open-source code and data: <https://magcil.github.io/code.html>
+- Work with us, in industry projects or research consortia: <https://magcil.github.io/collaborate.html>
+
+Other tools from the group:
+
+- [`pyAudioAnalysis`](https://github.com/tyiannak/pyAudioAnalysis) &mdash; audio feature extraction, classification, segmentation and applications
+- [`deep_audio_features`](https://github.com/tyiannak/deep_audio_features) &mdash; training and using CNNs for audio classification (PyTorch)
+- [`deepaudio-x`](https://github.com/magcil/deepaudio-x) &mdash; a PyTorch framework for audio classification
+- [`deepaudio-lab`](https://github.com/magcil/deepaudio-lab) &mdash; a no-code platform for training, evaluating and deploying audio classifiers
+- [`amvoc`](https://github.com/tyiannak/amvoc) &mdash; analysis of mouse vocal communication
+- [`paura`](https://github.com/tyiannak/paura) &mdash; real-time audio recording and analysis
+
+The full list is at <https://github.com/magcil>.
