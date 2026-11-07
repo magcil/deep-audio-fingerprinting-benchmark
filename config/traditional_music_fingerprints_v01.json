@@ -1,0 +1,13 @@
+{
+  "input dirs": [
+    "/mnt/greek_music_dataset/raw_wavs_filtered"
+  ],
+  "output dir": "traditional_music_fingerprints_v01",
+  "batch size": 32,
+  "SR": 8000,
+  "HOP SIZE": 4000,
+  "weights": "pretrained_models/transformer_phase1.pt",
+  "model_str": "transformer",
+  "feature": "fbanks",
+  "num_workers": 0
+}
