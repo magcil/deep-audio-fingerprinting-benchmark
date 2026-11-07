@@ -173,3 +173,8 @@ config/*.yaml
 data/*
 
 !recordings/recording_songs.csv
+!config/traditional_music_fingerprints_v01.json
+!config/traditional_music_faiss_v01.json
+logs/deduplication.pid
+notebooks/deduplication.ipynb
+notebooks/listen_similar_songs.ipynb

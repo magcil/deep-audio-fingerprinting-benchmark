@@ -1,0 +1,7 @@
+{
+  "input_dir": "traditional_music_fingerprints_v01",
+  "output_dir": "data/traditional_music_database_v01",
+  "name": "IVF50PQ32_traditional_music_dataset_v01",
+  "index": "IVF50,PQ32",
+  "d": 128
+}

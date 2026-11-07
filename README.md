@@ -19,13 +19,17 @@ https://github.com/user-attachments/assets/25ded63f-5e91-4230-8779-2917e6e9a9b6
 
 ## Env Setup
 
-Create a python environment with python version `3.9.20` (any python `3.9.xx` environment should work w/o problems). If you are using conda use
+The project uses [uv](https://docs.astral.sh/uv/), `pyproject.toml`, and `uv.lock`.
+From the repository root, create or update the environment with:
 
 ```bash
-conda create -n deep_audio_fingerprinting python==3.9.20
+uv sync
 ```
 
-Activate the environment and install the requirements: `conda activate deep_audio_fingerprinting && pip install -r requirements.txt`.
+The `.python-version` file selects Python 3.10. Run commands with `uv run` to use
+the project environment; no manual environment activation is needed.
+To retain extra packages already installed in `.venv`, such as Jupyter, use
+`uv sync --inexact` instead of `uv sync`.
 
 **Note**: To install PyAudio you'll need to have installed the portaudio library: <a href="https://people.csail.mit.edu/hubert/pyaudio/#downloads">portaudio installation for PyAudio</a>.
 
@@ -66,7 +70,7 @@ The key "model_str" can have two options: either "fingerprinter" or "audsearch" 
 Then hit the command:
 
 ```bash
-python training/trainer.py --config <abs_path_to_json_config.json>
+uv run python training/trainer.py --config <abs_path_to_json_config.json>
 ```
 
 ## Fingerprint Extraction
@@ -90,7 +94,7 @@ Once the model is trained you need to extract the fingerprints of each song. In 
 The `SR` key corresponds to the chosen sampling rate while "HOP SIZE" controls the overlap ratio in the fingerprint extraction. The key "input dirs" expects a sequence of Abs paths containing the directories of the songs to be stored in the database. Once you have the `.json` configuration run
 
 ```bash
-python generation/generate_fingerprints.py --config <abs_path_to_json_fingerprint_extraction.json>
+uv run python generation/generate_fingerprints.py --config <abs_path_to_json_fingerprint_extraction.json>
 ```
 
 ## Database Indexing
@@ -98,7 +102,7 @@ python generation/generate_fingerprints.py --config <abs_path_to_json_fingerprin
 We use the <a href="https://github.com/facebookresearch/faiss">Faiss</a> library for the database indexing. A faiss index is created with the specified format, and a json structure keeps track of the song order in the database. To create the faiss index and the json correspondence run the command
 
 ```bash
-python generation/generate_index.py --config <abs_path_to_json_faiss_generation.json>
+uv run python generation/generate_index.py --config <abs_path_to_json_faiss_generation.json>
 ```
 
 where `faiss_generation.json` has the following format
@@ -114,6 +118,40 @@ where `faiss_generation.json` has the following format
 ```
 
 The key "name" prefixes the index/json files that will be created upon successful execution. The key "index" describes the format of the index as presented in faiss (see: <a href="https://github.com/facebookresearch/faiss/wiki/The-index-factory">https://github.com/facebookresearch/faiss/wiki/The-index-factory</a>)
+
+### Traditional music database v01
+
+Use the repository's original `generation/generate_fingerprints.py` and
+`generation/generate_index.py` scripts with the configurations in `config/`.
+The configurations select `/mnt/greek_music_dataset/raw_wavs_filtered` and
+`pretrained_models/transformer_phase1.pt` (BEATs with its 128-dimensional
+projection head and filterbank features).
+
+Run from the repository root:
+
+```bash
+uv sync &&
+mkdir -p traditional_music_fingerprints_v01 data/traditional_music_database_v01 &&
+uv run python generation/generate_fingerprints.py --config config/traditional_music_fingerprints_v01.json &&
+uv run python generation/generate_index.py --config config/traditional_music_faiss_v01.json
+```
+
+The upstream extraction script uses one-second segments. Its config keys are
+`SR: 8000`, `HOP SIZE: 4000` (a 0.5-second hop), `batch size: 32`, and `output dir`.
+Each WAV produces `traditional_music_fingerprints_v01/<title>.npy` with shape
+`(number_of_complete_segments, 128)`. Reruns skip existing fingerprint files.
+Keep the output directory dedicated to one checkpoint and set of extraction
+settings.
+
+The upstream index script uses `index: "IVF50,PQ32"` and `d: 128`. It trains
+on all extracted fingerprints and creates:
+
+- `data/traditional_music_database_v01/IVF50PQ32_traditional_music_dataset_v01.index`
+- `data/traditional_music_database_v01/IVF50PQ32_traditional_music_dataset_v01.json`
+
+The JSON maps each song's first vector ID to its WAV filename without `.wav`,
+for example `{"0": "song_a", "123": "song_b"}`. Song A owns IDs 0–122;
+song B starts at 123. This is the correspondence used by the evaluation scripts.
 
 ## Adding Songs to Index
 
@@ -136,7 +174,7 @@ To add new songs to an already existing index create `.json` format of the follo
 Then, run the command
 
 ```bash
-python utils.wavs_to_faiss_index.py -c <abs_path_to_json_config.json>
+uv run python utils.wavs_to_faiss_index.py -c <abs_path_to_json_config.json>
 ```
 
 This action will add the songs contained in `data_path` to the faiss index by updating the corresponding json.
